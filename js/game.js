@@ -38,7 +38,8 @@ const background = {
 const stick = new AnalogStick({
     player: player,
     speed: 3,
-    element: '#gameContainer'
+    element: '#gameContainer',
+    alwaysVisible: true  // <-- 👈 NEW OPTION
   });
   stick.enable();
   
