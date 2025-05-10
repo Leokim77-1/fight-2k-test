@@ -6,6 +6,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = 844;
 canvas.height = 320;
 
+// World size (bigger than canvas)
+const world = {
+    width: 2000,
+    height: canvas.height
+};
+
 // Player object with physics
 const player = {
     x: 50,
@@ -25,7 +31,7 @@ const player = {
 const ground = {
     x: 0,
     y: 270,
-    width: 844,
+    width: world.width,
     height: 50,
     color: 'lightgreen',
 };
@@ -33,16 +39,31 @@ const ground = {
 const background = {
     x: 0,
     y: 0,
-    width: canvas.width,
+    width: world.width,
     height: canvas.height,
     color: 'lightblue',
 };
 
-// Initialize AnalogStick with onMove control
+// Camera to follow player
+const camera = {
+    x: 0,
+    y: 0,
+    width: canvas.width,
+    height: canvas.height,
+    follow(player, margin = 200) {
+        const centerX = player.x + player.width/2;
+        const targetX = centerX - this.width / 2;
+
+        // Clamp camera within world bounds
+        this.x = Math.max(0, Math.min(targetX, world.width - this.width));
+    }
+};
+
+// Initialize AnalogStick with onMove control (ALWAYS FIXED POSITION)
 const stick = new AnalogStick({
     player: player,
     speed: player.speed,
-    element: '#gameContainer',   // ⚠️ attach to container div, NOT canvas
+    element: '#gameContainer',
     alwaysVisible: true,
     onMove: (dir) => {
         player.velX = dir.x * player.speed;
@@ -57,28 +78,28 @@ stick.enable();
 const img = new Image();
 img.src = "./assets/sprite.png";
 
-// Draw everything
+// Draw everything with camera offset
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw background
+    // Parallax background (moves slower than player)
     ctx.fillStyle = background.color;
-    ctx.fillRect(background.x, background.y, background.width, background.height);
-
-    // Draw player (sprite or fallback box)
-    if (img.complete) {
-        ctx.drawImage(img, player.x, player.y, player.width, player.height);
-    } else {
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-    }
+    ctx.fillRect(-camera.x * 0.3, background.y, background.width * 2, background.height);
 
     // Draw ground
     ctx.fillStyle = ground.color;
-    ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
+    ctx.fillRect(ground.x - camera.x, ground.y, ground.width, ground.height);
+
+    // Draw player (sprite or fallback box)
+    if (img.complete) {
+        ctx.drawImage(img, player.x - camera.x, player.y, player.width, player.height);
+    } else {
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x - camera.x, player.y, player.width, player.height);
+    }
 }
 
-// Game loop with physics
+// Game loop with physics + camera follow
 function gameLoop() {
     // Apply gravity
     player.velY += player.gravity;
@@ -100,6 +121,9 @@ function gameLoop() {
     } else {
         player.grounded = false;
     }
+
+    // Camera follows player
+    camera.follow(player);
 
     draw();
     requestAnimationFrame(gameLoop);
